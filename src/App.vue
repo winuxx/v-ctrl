@@ -6,11 +6,12 @@
     <Select
       v-bind:label="selectLabel1"
       v-bind:options="selectOptions1"
+      @change="onSelect"
     />
-    <p></p>
     <Select
       v-bind:label="selectLabel2"
       v-bind:options="selectOptions2"
+      @change="onSelect"
     />
   </div>
 </template>
@@ -40,6 +41,12 @@ export default defineComponent({
         {text: 'option g', value: 7},
       ],
     }
+  },
+  methods: {
+    onSelect(value: any) {
+      console.log('on select');
+      console.log('seleted:', value);
+    }
   }
 })
 </script>
@@ -56,5 +63,8 @@ export default defineComponent({
 #container {
   width: 400px;
   margin: 0 auto;
+}
+.select {
+  margin: 1em 0;
 }
 </style>

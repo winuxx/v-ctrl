@@ -11,16 +11,26 @@
       {{ label }}
     </div>
     <div class="options"
-      v-bind:class="{ expanded: optionsExpanded, unexpanded: !optionsExpanded }"
+      v-bind:class="{ expanded: isOptionsExpanded, unexpanded: !isOptionsExpanded }"
       v-on:mouseover="onOptionOver"
       v-on:mouseout="onOptionOut"
     >
+      <div class="option fixed"
+        v-bind:class="{ hidden: !isOptionsExpanded }"
+      >
+        <div class="option-text">
+          {{ options[selectedIndex].text }}
+        </div>
+        <div class="icon right index">
+          {{ selectedIndex + 1 }}
+        </div>
+      </div>
       <template
         v-for="(option, index) in options"
         v-bind:key="option"
       >
         <div class="option"
-          v-bind:class="{ selected: option.selected, hidden: !optionsExpanded && !option.selected }"
+          v-bind:class="{ selected: option.selected, hidden: !isOptionsExpanded && !option.selected }"
           v-on:click="onOptionClick($event, option, index)"
         >
           <!-- 不能使用span, 无法捕获鼠标悬停事件 -->
@@ -28,21 +38,21 @@
           <div class="option-text">
             {{ option.text }}
           </div>
-          <div class="icon right"
-            v-bind:class="{ hidden: !optionsExpanded || option.selected }"
+          <div class="icon right index"
+            v-bind:class="{ hidden: !isOptionsExpanded || option.selected }"
           >
             {{ index + 1 }}
           </div>
           <div class="icon right selected"
-            v-bind:class="{ hidden: !optionsExpanded || !option.selected }"
+            v-bind:class="{ hidden: !isOptionsExpanded || !option.selected }"
           >
-            *
+            S
           </div>
         </div>
       </template>
     </div>
     <div class="icon right expand"
-      v-bind:class="{ hidden: optionsExpanded }"
+      v-bind:class="{ hidden: isOptionsExpanded, highlight: isOptionOver }"
     >
       +
     </div>
@@ -73,17 +83,18 @@ export default defineComponent({
       ]
     },
   },
+  emits: ['change'],
   data() {
     return {
       id: '',
-      optionsExpanded: false,
+      isOptionsExpanded: false,
+      isOptionOver: false,
       selectedValue: undefined,
       selectedIndex: 0,
       hoverElementOffsetTop: 0,
     }
   },
-  setup: () => {
-  },
+  setup: () => {},
   mounted() {
     // console.log('name:', name);
     // console.log('data:', this.data);
@@ -93,6 +104,7 @@ export default defineComponent({
     id += 1;
     this.id = 'select-ctrl-' + id;
     // console.log('id:', id);
+    this.getSelectedOption();
   },
   methods: {
     onWindowClick(event: Event) {
@@ -104,9 +116,9 @@ export default defineComponent({
       let target = event.target;
       // console.log(target);
       // todo: 应该在事件传播到 select div 时记录其 id
-      let id = this.getSelectId(target);
+      let id = this.getSelectElId(target);
       if ( id !== this.id) {
-        this.optionsExpanded = false;
+        this.isOptionsExpanded = false;
       }
       this.hoverElementOffsetTop = 0;
     },
@@ -115,7 +127,7 @@ export default defineComponent({
       console.log('on select click');
       // event.stopPropagation();
       // event.cancelBubble = true;
-      this.optionsExpanded = !this.optionsExpanded;
+      this.isOptionsExpanded = !this.isOptionsExpanded;
     },
 
     onLabelClick(event: Event) {
@@ -127,18 +139,19 @@ export default defineComponent({
       console.log('on option click');
       // 如果 options 未展开, 则冒泡到 onWindowClick 去处理
       // 如果阻止冒泡, 事件不会到达 window, 则点击一个 select 无法让其它的 select 收起
-      if (!this.optionsExpanded) {
+      if (!this.isOptionsExpanded) {
         return;
       }
       // 阻止冒泡 / 传递
       event.stopPropagation();
       event.cancelBubble = true;
-      this.optionsExpanded = !this.optionsExpanded;
+      this.isOptionsExpanded = !this.isOptionsExpanded;
       // select option
       this.selectedIndex = index;
-      this.selectedValue = option.valueOf().value;
-      // console.log('selected option:', index, this.selectedValue);
-      this.changeSelected(index);
+      let selectedValue = option.valueOf().value;
+      this.$emit('change', selectedValue);
+      this.changeSelectedOption(index);
+      this.hoverElementOffsetTop = 0;
     },
 
     onOptionOver(event: Event) {
@@ -149,16 +162,18 @@ export default defineComponent({
       let offsetTop = target.offsetTop - target.parentElement.offsetTop;
       // console.log(offsetTop);
       this.hoverElementOffsetTop = offsetTop;
+      this.isOptionOver = true;
     },
 
     onOptionOut(event: Event) {
       // console.log('on option out');
-      // 鼠标移出后还原 label 位置, 会比较突兀
-      // 移至 window click 事件处理中
-      // this.hoverElementOffsetTop = 0;
+      // 鼠标移出后还原 label 位置, 当鼠标从 options 移动至 label 时, 稍显突兀
+      // 可移至 select mouse out 事件处理
+      this.hoverElementOffsetTop = 0;
+      this.isOptionOver = false;
     },
 
-    changeSelected(index: Number) {
+    changeSelectedOption(index: Number) {
       let i = 0
       for (let option of this.options) {
         if (i !== index && option.hasOwnProperty('selected')) {
@@ -170,7 +185,19 @@ export default defineComponent({
       // console.log('options:', this.options);
     },
 
-    getSelectId(target: Element) {
+    getSelectedOption() {
+      let i = 0;
+      for (let option of this.options) {
+        if (option.selected) {
+          this.selectedIndex = i;
+          this.selectedValue = option.value;
+          return;
+        }
+        i += 1;
+      }
+    },
+
+    getSelectElId(target: Element) {
       let id = target.id;
       if (id.indexOf('select') === 0) {
         return id;
@@ -180,9 +207,9 @@ export default defineComponent({
         return null;
       }
       else {
-        return this.getSelectId(target.parentElement);
+        return this.getSelectElId(target.parentElement);
       }
-    }
+    },
   }
 })
 </script>
@@ -226,36 +253,17 @@ label {
   padding-left: 0.5em;
   padding-right: 0.5em;
   padding-top: v-bind(hoverElementOffsetTop + 2 + "px");
+  border-right: 1px solid;
 }
 
 .options {
   width: 100%;
 }
 
-/* use id */
-/* .options.unexpanded:after {
-  content: "+";
-  color: white;
-  background: #3ca576;
-  width: 1rem;
-  float: right;
-} */
-
-/* content 为空时或空格时, after 不占高度, 原因未知 */
-/* .options.expanded > .option:after {
-  content: ">";
-  width: 1rem;
-  height: 100%;
-  float: right;
-} */
-
-/* .options.expanded > .option.selected:after {
-  content: "*";
-} */
-
 .option {
   /* width: 100%; */
   display: flex;
+  align-items: center;
   font-size: 20px;
 }
 
@@ -265,37 +273,51 @@ label {
   /* font-weight: bold; */
 }
 
+.option.fixed {
+  color:#3ca576;
+  border-bottom: 1px solid;
+}
+
 .option:hover {
   color: white;
   background: #3ca576;
   /* height: 1.5em; */
   /* font-weight: bold; */
+  /* border-left: 1px solid; */
+  /* border-right: 1px solid; */
 }
 
 .option-text {
   width: 100%;
-  padding-left: 0.5em;
-  padding-right: 0.5em;
-
+  padding: 0 0.5em;
+  text-align: left;
 }
 
 .icon {
-  font-size: 16px;
   flex-shrink: 0;
   width: 2rem;
-  padding-top: 2px;
 }
 
 .icon.right {
   float: right;
 }
 
-/* .icon.selected {
-  color: #3ca576;
-} */
-
 .icon.expand {
-  color: white;
+  color: #3ca576;
+  padding-top: 2px;
+  border-left: 1px solid;
+}
+
+.icon.expand.highlight {
+  color:white;
   background: #3ca576;
+}
+
+.icon.index {
+  font-size: 12px;
+}
+
+.icon.selected {
+  font-size: 16px;
 }
 </style>
