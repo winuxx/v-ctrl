@@ -2,10 +2,13 @@
   <!-- <h1>{{ msg }}</h1> -->
 
   <div class="select"
-    v-bind:id="id"
+    v-bind:id="selectElId"
     v-on:click="onSelectClick"
+    v-on:mouseover="onSelectOver"
+    v-on:mouseout="onSelectOut"
   >
     <div class="label"
+      v-bind:style="labelStyle"
       v-on:click="onLabelClick"
     >
       {{ label }}
@@ -16,12 +19,14 @@
       v-on:mouseout="onOptionOut"
     >
       <div class="option fixed"
-        v-bind:class="{ hidden: !isOptionsExpanded }"
+        v-bind:class="{ highlight: isSelectOver && !isOptionsExpanded }"
       >
         <div class="option-text">
           {{ options[selectedIndex].text }}
         </div>
-        <div class="icon right index">
+        <div class="icon right index"
+            v-bind:class="{ hidden: !isOptionsExpanded }"
+        >
           {{ selectedIndex + 1 }}
         </div>
       </div>
@@ -30,21 +35,19 @@
         v-bind:key="option"
       >
         <div class="option"
-          v-bind:class="{ selected: option.selected, hidden: !isOptionsExpanded && !option.selected }"
+          v-bind:class="{ selected: option.selected, hidden: !isOptionsExpanded }"
           v-on:click="onOptionClick($event, option, index)"
         >
-          <!-- 不能使用span, 无法捕获鼠标悬停事件 -->
-          <!-- <span>{{ option.text }}</span> -->
           <div class="option-text">
             {{ option.text }}
           </div>
           <div class="icon right index"
-            v-bind:class="{ hidden: !isOptionsExpanded || option.selected }"
+            v-bind:class="{ hidden: option.selected }"
           >
             {{ index + 1 }}
           </div>
           <div class="icon right selected"
-            v-bind:class="{ hidden: !isOptionsExpanded || !option.selected }"
+            v-bind:class="{ hidden: !option.selected }"
           >
             S
           </div>
@@ -52,7 +55,7 @@
       </template>
     </div>
     <div class="icon right expand"
-      v-bind:class="{ hidden: isOptionsExpanded, highlight: isOptionOver }"
+      v-bind:class="{ hidden: isOptionsExpanded, highlight: isSelectOver }"
     >
       +
     </div>
@@ -60,7 +63,13 @@
 </template>
 
 <script lang="ts">
-import { ref, defineComponent } from 'vue'
+import { ref, defineComponent, PropType } from 'vue'
+
+interface SelectOption {
+  text: String,
+  value: any,
+  selected?: any,
+}
 
 let id = 0;
 
@@ -73,12 +82,13 @@ export default defineComponent({
     },
     label: String,
     options: {
-      type: Array,
+      type: Array as PropType<SelectOption[]>,
+      required: true,
       default: () => [
         {
           text: '',
           value: null,
-          selected: undefined
+          selected: undefined,
         }
       ]
     },
@@ -86,25 +96,37 @@ export default defineComponent({
   emits: ['change'],
   data() {
     return {
-      id: '',
+      selectElId: '',
       isOptionsExpanded: false,
-      isOptionOver: false,
+      isSelectOver: false,
       selectedValue: undefined,
       selectedIndex: 0,
       hoverElementOffsetTop: 0,
+      labelStyle: {
+        'padding-top': '0px',
+      },
     }
   },
   setup: () => {},
+  beforeMount () {
+    id += 1;
+    this.selectElId = 'select-ctrl-' + id;
+    this.getSelectedOption();
+  },
   mounted() {
     // console.log('name:', name);
     // console.log('data:', this.data);
 
     // todo: 可优化, select 数量多时绑定事件会过多
     window.addEventListener('click', this.onWindowClick);
-    id += 1;
-    this.id = 'select-ctrl-' + id;
-    // console.log('id:', id);
-    this.getSelectedOption();
+  },
+  unmounted() {
+    window.removeEventListener('click', this.onWindowClick);
+  },
+  watch: {
+    hoverElementOffsetTop: function(val: number) {
+      this.labelStyle['padding-top'] = val + 3 + 'px';
+    }
   },
   methods: {
     onWindowClick(event: Event) {
@@ -116,8 +138,8 @@ export default defineComponent({
       let target = event.target;
       // console.log(target);
       // todo: 应该在事件传播到 select div 时记录其 id
-      let id = this.getSelectElId(target);
-      if ( id !== this.id) {
+      let selectElId = this.getSelectElId(target);
+      if ( selectElId !== this.selectElId) {
         this.isOptionsExpanded = false;
       }
       this.hoverElementOffsetTop = 0;
@@ -135,7 +157,7 @@ export default defineComponent({
       // console.log(event);
     },
 
-    onOptionClick(event: Event, option: Object, index: Number) {
+    onOptionClick(event: Event, option: SelectOption, index: number) {
       console.log('on option click');
       // 如果 options 未展开, 则冒泡到 onWindowClick 去处理
       // 如果阻止冒泡, 事件不会到达 window, 则点击一个 select 无法让其它的 select 收起
@@ -148,21 +170,39 @@ export default defineComponent({
       this.isOptionsExpanded = !this.isOptionsExpanded;
       // select option
       this.selectedIndex = index;
-      let selectedValue = option.valueOf().value;
+      let selectedValue = option.value;
       this.$emit('change', selectedValue);
-      this.changeSelectedOption(index);
+      this.changeSelectedOption();
       this.hoverElementOffsetTop = 0;
+    },
+
+    onSelectOver(event: Event) {
+      this.isSelectOver = true;
+    },
+
+    onSelectOut(event: Event) {
+      this.isSelectOver = false;
     },
 
     onOptionOver(event: Event) {
       // console.log('on option over');
-      // console.log(event.target);
-      // let target = event.target;
-      let target = event.target.parentElement;
-      let offsetTop = target.offsetTop - target.parentElement.offsetTop;
-      // console.log(offsetTop);
+      let target = event.target;
+      if (target == null) {
+        return;
+      }
+      let optionEl = (<HTMLElement>event.target).parentElement;
+      if (optionEl === null) {
+        return;
+      }
+      let optionsEl = optionEl.parentElement;
+      let optionElOffsetTop = optionEl.offsetTop;
+      let optionsElOffsetTop = 0;
+      if (optionsEl != null) {
+        optionsElOffsetTop = optionsEl.offsetTop;
+      }
+      let offsetTop = optionElOffsetTop - optionsElOffsetTop;
       this.hoverElementOffsetTop = offsetTop;
-      this.isOptionOver = true;
+      // console.log(this.hoverElementOffsetTop);
     },
 
     onOptionOut(event: Event) {
@@ -170,18 +210,17 @@ export default defineComponent({
       // 鼠标移出后还原 label 位置, 当鼠标从 options 移动至 label 时, 稍显突兀
       // 可移至 select mouse out 事件处理
       this.hoverElementOffsetTop = 0;
-      this.isOptionOver = false;
     },
 
-    changeSelectedOption(index: Number) {
+    changeSelectedOption() {
       let i = 0
       for (let option of this.options) {
-        if (i !== index && option.hasOwnProperty('selected')) {
+        if (i !== this.selectedIndex && option.hasOwnProperty('selected')) {
           delete this.options[i].selected;
         }
         i += 1;
       }
-      this.options[index].selected = true;
+      this.options[this.selectedIndex].selected = true;
       // console.log('options:', this.options);
     },
 
@@ -197,10 +236,10 @@ export default defineComponent({
       }
     },
 
-    getSelectElId(target: Element) {
-      let id = target.id;
-      if (id.indexOf('select') === 0) {
-        return id;
+    getSelectElId(target: any) :any {
+      let elId = target.id;
+      if (elId.indexOf('select') === 0) {
+        return elId;
       }
       let parent = target.parentElement;
       if (!parent) {
@@ -221,38 +260,38 @@ export default defineComponent({
 } */
 
 a {
-  color: #42b983;
-}
-
-label {
-  margin: 0 0.5em;
-  font-weight: bold;
-}
-
-.select {
-  /* background: #42b983; */
-  width: auto;
-  min-width: 2rem;
-  max-width: 100%;
-  display: flex;
-  /* align-items: center; */
-  border:#42b983 1px solid;
-  border-radius: 0.2em;
+  color: #3ca576;
 }
 
 .hidden {
   display: none !important;
 }
 
+.highlight {
+  color:white !important;
+  background: #3ca576 !important;
+}
+
+.select {
+  /* background: #3ca576; */
+  width: auto;
+  min-width: 2rem;
+  max-width: 100%;
+  display: flex;
+  /* align-items: center; */
+  border:#3ca576 1px solid;
+  border-radius: 0.2em;
+}
+
 .label {
   color: white;
   background: #3ca576;
-  /* width: 100%; */
   font-size: 16px;
   text-align: right;
+  white-space: nowrap;
   padding-left: 0.5em;
   padding-right: 0.5em;
-  padding-top: v-bind(hoverElementOffsetTop + 2 + "px");
+  padding-top: v-bind(hoverElementOffsetTop + 3 + "px");
   border-right: 1px solid;
 }
 
@@ -275,6 +314,11 @@ label {
 
 .option.fixed {
   color:#3ca576;
+}
+
+.expanded > .option.fixed {
+  color:#fff;
+  background: #3ca576;
   border-bottom: 1px solid;
 }
 
@@ -283,14 +327,16 @@ label {
   background: #3ca576;
   /* height: 1.5em; */
   /* font-weight: bold; */
-  /* border-left: 1px solid; */
-  /* border-right: 1px solid; */
 }
 
 .option-text {
   width: 100%;
   padding: 0 0.5em;
   text-align: left;
+}
+
+.expanded > .option > .option-text {
+  border-right: 1px solid white;
 }
 
 .icon {
@@ -306,11 +352,6 @@ label {
   color: #3ca576;
   padding-top: 2px;
   border-left: 1px solid;
-}
-
-.icon.expand.highlight {
-  color:white;
-  background: #3ca576;
 }
 
 .icon.index {

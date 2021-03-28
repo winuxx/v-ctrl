@@ -2,7 +2,14 @@
 
 A select control based on Vue 3
 
-# Features / todo
+# How to run
+
+```command
+npm install -g serve
+serve -s dist
+```
+
+# Features / Todo
 
 * 点击后选择框会上下展开, 而不是下拉
     * 向下展开
@@ -33,3 +40,6 @@ A select control based on Vue 3
         * option 需悬浮显示
         * 靠近页面顶部时, 依然保证选中项在当前位置, 往下滚动时则加长选框
 * 选项很多需要滚动时, 每次滚动一格
+* css v-bind 失效
+    * style 未添加到 select 节点
+    * 原因未知

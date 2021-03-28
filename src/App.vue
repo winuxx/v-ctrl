@@ -27,12 +27,13 @@ export default defineComponent({
   },
   data() {
     return {
-      selectLabel1: 'select1',
+      selectLabel1: 'selection 1',
       selectOptions1: [
         {text: 'option a', value: 1, selected: true},
         {text: 'option b', value: 2},
+        {text: 'option c', value: 3},
       ],
-      selectLabel2: 'select2',
+      selectLabel2: 'selection 2',
       selectOptions2: [
         {text: 'option c', value: 3},
         {text: 'option d', value: 4, selected: true},
