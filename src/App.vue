@@ -11,6 +11,13 @@
     <Select
       v-bind:label="selectLabel2"
       v-bind:options="selectOptions2"
+      v-bind:primaryColor="'#22A2F2'"
+      @change="onSelect"
+    />
+    <Select
+      v-bind:label="selectLabel3"
+      v-bind:options="selectOptions3"
+      v-bind:primaryColor="'#ff8c00'"
       @change="onSelect"
     />
   </div>
@@ -40,6 +47,20 @@ export default defineComponent({
         {text: 'option e', value: 5},
         {text: 'option f', value: 6},
         {text: 'option g', value: 7},
+      ],
+      selectLabel3: 'selection 3',
+      selectOptions3: [
+        {text: 'option a', value: 1},
+        {text: 'option b', value: 2},
+        {text: 'option c', value: 3},
+        {text: 'option d', value: 4},
+        {text: 'option e', value: 5, selected: true},
+        {text: 'option f', value: 6},
+        {text: 'option g', value: 7},
+        {text: 'option g', value: 8},
+        {text: 'option g', value: 9},
+        {text: 'option g', value: 10},
+        {text: 'option g', value: 100},
       ],
     }
   },

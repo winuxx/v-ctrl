@@ -43,3 +43,7 @@ serve -s dist
 * css v-bind 失效
     * style 未添加到 select 节点
     * 原因未知
+* overflow
+    * options 使用 scroll (auto)
+    * label 动态位置可能会偏移, 需要修改
+* 事件都绑定到 select 或 options 上, 避免 option 过多时, 有过多事件处理

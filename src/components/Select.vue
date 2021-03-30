@@ -4,8 +4,9 @@
   <div class="select"
     v-bind:id="selectElId"
     v-on:click="onSelectClick"
-    v-on:mouseover="onSelectOver"
-    v-on:mouseout="onSelectOut"
+    v-on:mouseenter="onSelectEnter"
+    v-on:mouseleave="onSelectLeave"
+    v-bind:style="primaryStyle"
   >
     <div class="label"
       v-bind:style="labelStyle"
@@ -16,10 +17,10 @@
     <div class="options"
       v-bind:class="{ expanded: isOptionsExpanded, unexpanded: !isOptionsExpanded }"
       v-on:mouseover="onOptionOver"
-      v-on:mouseout="onOptionOut"
+      v-on:mouseleave="onOptionLeave"
     >
       <div class="option fixed"
-        v-bind:class="{ highlight: isSelectOver && !isOptionsExpanded }"
+        v-bind:class="{ highlight: isSelectOver }"
       >
         <div class="option-text">
           {{ options[selectedIndex].text }}
@@ -63,7 +64,7 @@
 </template>
 
 <script lang="ts">
-import { ref, defineComponent, PropType } from 'vue'
+import { ref, defineComponent, PropType, CSSProperties } from 'vue'
 
 interface SelectOption {
   text: String,
@@ -92,6 +93,10 @@ export default defineComponent({
         }
       ]
     },
+    primaryColor: {
+      type: String,
+      default: () => '#3ca576',
+    }
   },
   emits: ['change'],
   data() {
@@ -101,9 +106,12 @@ export default defineComponent({
       isSelectOver: false,
       selectedValue: undefined,
       selectedIndex: 0,
-      hoverElementOffsetTop: 0,
+      labelPaddingTop: 0,
+      primaryStyle: {
+        '--primaryColor': this.primaryColor,
+      } as CSSProperties,
       labelStyle: {
-        'padding-top': '0px',
+        paddingTop: '3px',
       },
     }
   },
@@ -115,7 +123,6 @@ export default defineComponent({
   },
   mounted() {
     // console.log('name:', name);
-    // console.log('data:', this.data);
 
     // todo: 可优化, select 数量多时绑定事件会过多
     window.addEventListener('click', this.onWindowClick);
@@ -124,8 +131,8 @@ export default defineComponent({
     window.removeEventListener('click', this.onWindowClick);
   },
   watch: {
-    hoverElementOffsetTop: function(val: number) {
-      this.labelStyle['padding-top'] = val + 3 + 'px';
+    labelPaddingTop: function(val: number) {
+      this.labelStyle['paddingTop'] = val + 3 + 'px';
     }
   },
   methods: {
@@ -135,14 +142,12 @@ export default defineComponent({
       // console.log(window.event);
 
       // 点击页面上非当前 select 的地方, 收起 options
-      let target = event.target;
-      // console.log(target);
       // todo: 应该在事件传播到 select div 时记录其 id
-      let selectElId = this.getSelectElId(target);
+      let selectElId = this.getSelectElId(event.target);
       if ( selectElId !== this.selectElId) {
         this.isOptionsExpanded = false;
       }
-      this.hoverElementOffsetTop = 0;
+      this.labelPaddingTop = 0;
     },
 
     onSelectClick(event: Event) {
@@ -173,43 +178,37 @@ export default defineComponent({
       let selectedValue = option.value;
       this.$emit('change', selectedValue);
       this.changeSelectedOption();
-      this.hoverElementOffsetTop = 0;
+      this.labelPaddingTop = 0;
     },
 
-    onSelectOver(event: Event) {
+    onSelectEnter(event: Event) {
+      // console.log('on select enter');
       this.isSelectOver = true;
     },
 
-    onSelectOut(event: Event) {
+    onSelectLeave(event: Event) {
+      // console.log('on select leave');
       this.isSelectOver = false;
+      // 鼠标移出后还原 label 位置
+      this.labelPaddingTop = 0;
     },
 
     onOptionOver(event: Event) {
-      // console.log('on option over');
-      let target = event.target;
-      if (target == null) {
+      // console.log('on option over', event);
+      let els = this.getOptionAndParentEl(event.target);
+      if (els === null) {
         return;
       }
-      let optionEl = (<HTMLElement>event.target).parentElement;
-      if (optionEl === null) {
-        return;
-      }
-      let optionsEl = optionEl.parentElement;
-      let optionElOffsetTop = optionEl.offsetTop;
-      let optionsElOffsetTop = 0;
-      if (optionsEl != null) {
-        optionsElOffsetTop = optionsEl.offsetTop;
-      }
-      let offsetTop = optionElOffsetTop - optionsElOffsetTop;
-      this.hoverElementOffsetTop = offsetTop;
-      // console.log(this.hoverElementOffsetTop);
+      let [target, parent] = els;
+      this.labelPaddingTop = target.offsetTop - parent.offsetTop;
+      // console.log(this.labelPaddingTop);
     },
 
-    onOptionOut(event: Event) {
-      // console.log('on option out');
-      // 鼠标移出后还原 label 位置, 当鼠标从 options 移动至 label 时, 稍显突兀
-      // 可移至 select mouse out 事件处理
-      this.hoverElementOffsetTop = 0;
+    onOptionLeave(event: Event) {
+      // console.log('on option leave');
+      // 鼠标移出后还原 label 位置
+      // 当鼠标从 options 移动至 label 时, 或2个元素之间有间隔时, 若还原, 稍显突兀
+      // 移至 select mouse leave
     },
 
     changeSelectedOption() {
@@ -236,7 +235,7 @@ export default defineComponent({
       }
     },
 
-    getSelectElId(target: any) :any {
+    getSelectElId(target: any): any {
       let elId = target.id;
       if (elId.indexOf('select') === 0) {
         return elId;
@@ -249,18 +248,36 @@ export default defineComponent({
         return this.getSelectElId(target.parentElement);
       }
     },
+
+    getOptionAndParentEl(target: any): any {
+      // console.log((<HTMLElement>target).classList);
+      if (target === null) {
+        return null;
+      }
+      let parent = (<HTMLElement>target).parentElement;
+      if (parent === null) {
+        return null;
+      }
+      if ((<HTMLElement>target).classList.contains('option')) {
+        return [target, parent];
+      }
+      else {
+        return this.getOptionAndParentEl(parent);
+      }
+    },
   }
 })
 </script>
 
 <style scoped>
-/* :root {
-  --label-font-size: 16;
-  --option-font-size: 20;
-} */
+:root {
+  /* --label-font-size: 16; */
+  /* --option-font-size: 20; */
+  /* --primaryColor: #3ca576; */
+}
 
 a {
-  color: #3ca576;
+  color: var(--primaryColor);
 }
 
 .hidden {
@@ -269,29 +286,29 @@ a {
 
 .highlight {
   color:white !important;
-  background: #3ca576 !important;
+  background: var(--primaryColor) !important;
 }
 
 .select {
-  /* background: #3ca576; */
+  /* background: var(--primaryColor); */
   width: auto;
   min-width: 2rem;
   max-width: 100%;
   display: flex;
   /* align-items: center; */
-  border:#3ca576 1px solid;
+  border:var(--primaryColor) 1px solid;
   border-radius: 0.2em;
 }
 
 .label {
   color: white;
-  background: #3ca576;
+  background: var(--primaryColor);
   font-size: 16px;
   text-align: right;
   white-space: nowrap;
   padding-left: 0.5em;
   padding-right: 0.5em;
-  padding-top: v-bind(hoverElementOffsetTop + 3 + "px");
+  padding-top: v-bind(labelPaddingTop + 3 + "px");
   border-right: 1px solid;
 }
 
@@ -307,24 +324,23 @@ a {
 }
 
 .option.selected {
-  /* background: #3ca576; */
-  color: #3ca576;
+  color: v-bind(primaryColor);
   /* font-weight: bold; */
 }
 
 .option.fixed {
-  color:#3ca576;
+  color:var(--primaryColor);
 }
 
 .expanded > .option.fixed {
   color:#fff;
-  background: #3ca576;
+  background: var(--primaryColor);
   border-bottom: 1px solid;
 }
 
 .option:hover {
   color: white;
-  background: #3ca576;
+  background: var(--primaryColor);
   /* height: 1.5em; */
   /* font-weight: bold; */
 }
@@ -349,7 +365,7 @@ a {
 }
 
 .icon.expand {
-  color: #3ca576;
+  color: var(--primaryColor);
   padding-top: 2px;
   border-left: 1px solid;
 }
