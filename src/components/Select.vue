@@ -10,7 +10,6 @@
   >
     <div class="label"
       v-bind:style="labelStyle"
-      v-on:click="onLabelClick"
     >
       {{ label }}
     </div>
@@ -22,7 +21,7 @@
       <div class="option fixed"
         v-bind:class="{ highlight: isSelectOver }"
       >
-        <div class="option-text">
+        <div class="text">
           {{ options[selectedIndex].text }}
         </div>
         <div class="icon right index"
@@ -36,21 +35,23 @@
         v-bind:key="option"
       >
         <div class="option"
-          v-bind:class="{ selected: option.selected, hidden: !isOptionsExpanded }"
+          v-bind:class="{ selected: selectedIndex == index, hidden: !isOptionsExpanded }"
           v-on:click="onOptionClick($event, option, index)"
         >
-          <div class="option-text">
+          <div class="text">
             {{ option.text }}
           </div>
           <div class="icon right index"
-            v-bind:class="{ hidden: option.selected }"
+            v-bind:class="{ hidden: selectedIndex == index }"
           >
             {{ index + 1 }}
           </div>
           <div class="icon right selected"
-            v-bind:class="{ hidden: !option.selected }"
+            v-bind:class="{ hidden: !(selectedIndex == index), highlight: isSelectedOptionOver }"
           >
-            S
+            <svg width="auto" height="auto" viewBox="0 0 100 100">
+              <circle id="circle" cx="50" cy="50" r="50" />
+            </svg>
           </div>
         </div>
       </template>
@@ -58,7 +59,9 @@
     <div class="icon right expand"
       v-bind:class="{ hidden: isOptionsExpanded, highlight: isSelectOver }"
     >
-      +
+      <svg width="auto" height="auto" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <path id="arrow-down" stroke-width="0" stroke="#000" fill="" transform="rotate(90, 100, 100)" d="m100,100 -100,-100 l200,100 -200,100 l100,-100 z"/>
+      </svg>
     </div>
   </div>
 </template>
@@ -72,6 +75,7 @@ interface SelectOption {
   selected?: any,
 }
 
+// todo: should use store / storage
 let id = 0;
 
 export default defineComponent({
@@ -104,11 +108,11 @@ export default defineComponent({
       selectElId: '',
       isOptionsExpanded: false,
       isSelectOver: false,
-      selectedValue: undefined,
+      isSelectedOptionOver: false,
       selectedIndex: 0,
       labelPaddingTop: 0,
       primaryStyle: {
-        '--primaryColor': this.primaryColor,
+        '--primary-color': this.primaryColor,
       } as CSSProperties,
       labelStyle: {
         paddingTop: '3px',
@@ -119,7 +123,7 @@ export default defineComponent({
   beforeMount () {
     id += 1;
     this.selectElId = 'select-ctrl-' + id;
-    this.getSelectedOption();
+    this.setDefaultSelectedOption();
   },
   mounted() {
     // console.log('name:', name);
@@ -152,14 +156,7 @@ export default defineComponent({
 
     onSelectClick(event: Event) {
       console.log('on select click');
-      // event.stopPropagation();
-      // event.cancelBubble = true;
       this.isOptionsExpanded = !this.isOptionsExpanded;
-    },
-
-    onLabelClick(event: Event) {
-      console.log('on label click');
-      // console.log(event);
     },
 
     onOptionClick(event: Event, option: SelectOption, index: number) {
@@ -172,13 +169,14 @@ export default defineComponent({
       // 阻止冒泡 / 传递
       event.stopPropagation();
       event.cancelBubble = true;
-      this.isOptionsExpanded = !this.isOptionsExpanded;
-      // select option
+      // 修改选定 option
       this.selectedIndex = index;
-      let selectedValue = option.value;
-      this.$emit('change', selectedValue);
-      this.changeSelectedOption();
+      // 还原 label 位置
       this.labelPaddingTop = 0;
+      // 收起 options
+      this.isOptionsExpanded = false;
+      // 将选定 option 的值传给父组件
+      this.$emit('change', option.value);
     },
 
     onSelectEnter(event: Event) {
@@ -201,7 +199,7 @@ export default defineComponent({
       }
       let [target, parent] = els;
       this.labelPaddingTop = target.offsetTop - parent.offsetTop;
-      // console.log(this.labelPaddingTop);
+      this.isSelectedOptionOver = target.classList.contains('selected') ? true : false;
     },
 
     onOptionLeave(event: Event) {
@@ -209,27 +207,16 @@ export default defineComponent({
       // 鼠标移出后还原 label 位置
       // 当鼠标从 options 移动至 label 时, 或2个元素之间有间隔时, 若还原, 稍显突兀
       // 移至 select mouse leave
+        this.isSelectedOptionOver = false;
     },
 
-    changeSelectedOption() {
-      let i = 0
-      for (let option of this.options) {
-        if (i !== this.selectedIndex && option.hasOwnProperty('selected')) {
-          delete this.options[i].selected;
-        }
-        i += 1;
-      }
-      this.options[this.selectedIndex].selected = true;
-      // console.log('options:', this.options);
-    },
-
-    getSelectedOption() {
+    setDefaultSelectedOption() {
       let i = 0;
       for (let option of this.options) {
         if (option.selected) {
+          // selectedIndex 赋值应该在循环内. 若父组件没有设置 selected, 则 selectedIndex 保持默认值 (0)
           this.selectedIndex = i;
-          this.selectedValue = option.value;
-          return;
+          break;
         }
         i += 1;
       }
@@ -273,108 +260,105 @@ export default defineComponent({
 :root {
   /* --label-font-size: 16; */
   /* --option-font-size: 20; */
-  /* --primaryColor: #3ca576; */
+  /* --primary-color: #3ca576; */
 }
 
-a {
-  color: var(--primaryColor);
-}
-
+/* common styles */
 .hidden {
   display: none !important;
 }
-
 .highlight {
-  color:white !important;
-  background: var(--primaryColor) !important;
+  color:#fff !important;
+  background: var(--primary-color) !important;
+}
+.highlight > svg {
+  fill: #fff !important;
+}
+
+a {
+  color: var(--primary-color);
 }
 
 .select {
-  /* background: var(--primaryColor); */
+  /* background: var(--primary-color); */
   width: auto;
   min-width: 2rem;
   max-width: 100%;
   display: flex;
   /* align-items: center; */
-  border:var(--primaryColor) 1px solid;
+  border:var(--primary-color) 1px solid;
   border-radius: 0.2em;
 }
-
 .label {
-  color: white;
-  background: var(--primaryColor);
+  color: #fff;
+  background: var(--primary-color);
   font-size: 16px;
   text-align: right;
   white-space: nowrap;
   padding-left: 0.5em;
   padding-right: 0.5em;
-  padding-top: v-bind(labelPaddingTop + 3 + "px");
+  /* padding-top: v-bind(labelPaddingTop + 3 + "px"); */
   border-right: 1px solid;
 }
-
 .options {
   width: 100%;
 }
-
 .option {
   /* width: 100%; */
   display: flex;
   align-items: center;
   font-size: 20px;
 }
-
 .option.selected {
-  color: v-bind(primaryColor);
+  color: var(--primary-color);
   /* font-weight: bold; */
 }
-
 .option.fixed {
-  color:var(--primaryColor);
+  color:var(--primary-color);
 }
-
 .expanded > .option.fixed {
   color:#fff;
-  background: var(--primaryColor);
+  background: var(--primary-color);
   border-bottom: 1px solid;
 }
-
 .option:hover {
-  color: white;
-  background: var(--primaryColor);
+  color: #fff;
+  background: var(--primary-color);
   /* height: 1.5em; */
   /* font-weight: bold; */
 }
-
-.option-text {
+.text {
   width: 100%;
   padding: 0 0.5em;
   text-align: left;
 }
-
-.expanded > .option > .option-text {
-  border-right: 1px solid white;
+.expanded > .option > .text {
+  border-right: 1px solid #fff;
 }
-
 .icon {
   flex-shrink: 0;
   width: 2rem;
 }
-
 .icon.right {
   float: right;
 }
-
 .icon.expand {
-  color: var(--primaryColor);
+  color: var(--primary-color);
   padding-top: 2px;
   border-left: 1px solid;
 }
-
 .icon.index {
   font-size: 12px;
 }
-
 .icon.selected {
   font-size: 16px;
+  line-height: 16px;
+}
+.icon > svg {
+  height: 12px;
+  fill: var(--primary-color);
+}
+.icon > img {
+  height: 1rem;
 }
 </style>

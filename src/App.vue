@@ -43,7 +43,7 @@ export default defineComponent({
       selectLabel2: 'selection 2',
       selectOptions2: [
         {text: 'option c', value: 3},
-        {text: 'option d', value: 4, selected: true},
+        {text: 'option d', value: 4},
         {text: 'option e', value: 5},
         {text: 'option f', value: 6},
         {text: 'option g', value: 7},
