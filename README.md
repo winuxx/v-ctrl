@@ -47,3 +47,10 @@ serve -s dist
     * options 使用 scroll (auto)
     * label 动态位置可能会偏移, 需要修改
 * 事件都绑定到 select 或 options 上, 避免 option 过多时, 有过多事件处理
+* label 为空时, 不显示 label
+* option 为空
+    * disable select?
+        * 有默认值, 判断较麻烦
+    * 无意义, 故不考虑?
+* primary-color 改成即时(动态绑定)?
+    * primaryStyle 在 data 里, 不会即时改变

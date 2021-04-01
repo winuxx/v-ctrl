@@ -10,6 +10,7 @@
   >
     <div class="label"
       v-bind:style="labelStyle"
+      v-if="label != null"
     >
       {{ label }}
     </div>
@@ -24,10 +25,25 @@
         <div class="text">
           {{ options[selectedIndex].text }}
         </div>
-        <div class="icon right index"
-            v-bind:class="{ hidden: !isOptionsExpanded }"
+        <!-- <div class="icon index"
+            v-show="isOptionsExpanded"
         >
           {{ selectedIndex + 1 }}
+        </div> -->
+        <div class="icon svg expand"
+          v-bind:class="{ highlight: isSelectOver }"
+          v-show="!isOptionsExpanded"
+        >
+          <svg width="auto" height="auto" viewBox="0 0 4 4" xmlns="http://www.w3.org/2000/svg">
+            <path id="arrow-down" stroke-width="0" stroke="#000" fill="" transform="rotate(0, 2, 2)" d="M0,1 L2,2 L4,1 L2,3 Z"/>
+          </svg>
+        </div>
+        <div class="icon svg highlight"
+          v-show="isOptionsExpanded"
+        >
+          <svg width="auto" height="auto" viewBox="0 0 4 4" xmlns="http://www.w3.org/2000/svg">
+            <path id="arrow-up" stroke-width="0" stroke="#000" fill="" transform="rotate(180, 2, 2)" d="M0,1 L2,2 L4,1 L2,3 Z"/>
+          </svg>
         </div>
       </div>
       <template
@@ -35,19 +51,21 @@
         v-bind:key="option"
       >
         <div class="option"
-          v-bind:class="{ selected: selectedIndex == index, hidden: !isOptionsExpanded }"
+          v-bind:class="{ selected: selectedIndex == index }"
+          v-show="isOptionsExpanded"
           v-on:click="onOptionClick($event, option, index)"
         >
           <div class="text">
             {{ option.text }}
           </div>
-          <div class="icon right index"
-            v-bind:class="{ hidden: selectedIndex == index }"
+          <div class="icon index"
+            v-if="selectedIndex != index"
           >
             {{ index + 1 }}
           </div>
-          <div class="icon right selected"
-            v-bind:class="{ hidden: !(selectedIndex == index), highlight: isSelectedOptionOver }"
+          <div class="icon svg selected"
+            v-bind:class="{ highlight: isSelectedOptionOver }"
+            v-if="selectedIndex == index"
           >
             <svg width="auto" height="auto" viewBox="0 0 100 100">
               <circle id="circle" cx="50" cy="50" r="50" />
@@ -55,13 +73,6 @@
           </div>
         </div>
       </template>
-    </div>
-    <div class="icon right expand"
-      v-bind:class="{ hidden: isOptionsExpanded, highlight: isSelectOver }"
-    >
-      <svg width="auto" height="auto" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-        <path id="arrow-down" stroke-width="0" stroke="#000" fill="" transform="rotate(90, 100, 100)" d="m100,100 -100,-100 l200,100 -200,100 l100,-100 z"/>
-      </svg>
     </div>
   </div>
 </template>
@@ -91,7 +102,7 @@ export default defineComponent({
       required: true,
       default: () => [
         {
-          text: '',
+          text: 'null',
           value: null,
           selected: undefined,
         }
@@ -119,6 +130,11 @@ export default defineComponent({
       },
     }
   },
+  watch: {
+    labelPaddingTop: function(val: number) {
+      this.labelStyle['paddingTop'] = val + 3 + 'px';
+    }
+  },
   setup: () => {},
   beforeMount () {
     id += 1;
@@ -126,18 +142,11 @@ export default defineComponent({
     this.setDefaultSelectedOption();
   },
   mounted() {
-    // console.log('name:', name);
-
     // todo: 可优化, select 数量多时绑定事件会过多
     window.addEventListener('click', this.onWindowClick);
   },
   unmounted() {
     window.removeEventListener('click', this.onWindowClick);
-  },
-  watch: {
-    labelPaddingTop: function(val: number) {
-      this.labelStyle['paddingTop'] = val + 3 + 'px';
-    }
   },
   methods: {
     onWindowClick(event: Event) {
@@ -264,9 +273,6 @@ export default defineComponent({
 }
 
 /* common styles */
-.hidden {
-  display: none !important;
-}
 .highlight {
   color:#fff !important;
   background: var(--primary-color) !important;
@@ -332,6 +338,9 @@ a {
   padding: 0 0.5em;
   text-align: left;
 }
+.option > .text {
+  border-right: 1px solid;
+}
 .expanded > .option > .text {
   border-right: 1px solid #fff;
 }
@@ -339,13 +348,8 @@ a {
   flex-shrink: 0;
   width: 2rem;
 }
-.icon.right {
-  float: right;
-}
 .icon.expand {
   color: var(--primary-color);
-  padding-top: 2px;
-  border-left: 1px solid;
 }
 .icon.index {
   font-size: 12px;
@@ -354,11 +358,13 @@ a {
   font-size: 16px;
   line-height: 16px;
 }
-.icon > svg {
-  height: 12px;
-  fill: var(--primary-color);
+.icon.svg {
+  display: flex;
+  align-items: center
 }
-.icon > img {
-  height: 1rem;
+.icon > svg {
+  fill: var(--primary-color);
+  flex: 1;
+  height: 12px;
 }
 </style>
