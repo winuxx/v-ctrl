@@ -20,7 +20,7 @@
       v-on:mouseleave="onOptionLeave"
     >
       <div class="option fixed"
-        v-bind:class="{ highlight: isSelectOver }"
+        v-bind:class="{ highlight: isOptionsExpanded }"
       >
         <div class="text">
           {{ options[selectedIndex].text }}
@@ -31,7 +31,6 @@
           {{ selectedIndex + 1 }}
         </div> -->
         <div class="icon svg expand"
-          v-bind:class="{ highlight: isSelectOver }"
           v-show="!isOptionsExpanded"
         >
           <svg width="auto" height="auto" viewBox="0 0 4 4" xmlns="http://www.w3.org/2000/svg">
@@ -102,7 +101,7 @@ export default defineComponent({
       required: true,
       default: () => [
         {
-          text: 'null',
+          text: '',
           value: null,
           selected: undefined,
         }
@@ -124,6 +123,7 @@ export default defineComponent({
       labelPaddingTop: 0,
       primaryStyle: {
         '--primary-color': this.primaryColor,
+        '--shadow-color': this.primaryColor.length === 4 ? this.primaryColor + '8' : this.primaryColor + '80',
       } as CSSProperties,
       labelStyle: {
         paddingTop: '3px',
@@ -233,7 +233,7 @@ export default defineComponent({
 
     getSelectElId(target: any): any {
       let elId = target.id;
-      if (elId.indexOf('select') === 0) {
+      if (elId.indexOf('select-ctrl') === 0) {
         return elId;
       }
       let parent = target.parentElement;
@@ -294,6 +294,11 @@ a {
   /* align-items: center; */
   border:var(--primary-color) 1px solid;
   border-radius: 0.2em;
+  user-select: none;
+}
+.select:hover,
+.select:focus {
+  box-shadow: 0 0 1em var(--shadow-color);
 }
 .label {
   color: #fff;
@@ -322,12 +327,15 @@ a {
 .option.fixed {
   color:var(--primary-color);
 }
+.unexpanded > .option.fixed {
+  height: 100%;
+}
 .expanded > .option.fixed {
   color:#fff;
   background: var(--primary-color);
   border-bottom: 1px solid;
 }
-.option:hover {
+.option:not(.fixed):hover {
   color: #fff;
   background: var(--primary-color);
   /* height: 1.5em; */
@@ -335,6 +343,7 @@ a {
 }
 .text {
   width: 100%;
+  height: 100%;
   padding: 0 0.5em;
   text-align: left;
 }
