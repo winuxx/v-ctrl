@@ -2,7 +2,7 @@
   <!-- <img alt="Vue logo" src="./assets/logo.png" /> -->
   <h1>Vue Select</h1>
   <p>Vue 3 + TypeScript + Vite</p>
-  <div id="container">
+  <div class="container">
     <Select
       v-bind:label="selectLabel1"
       v-bind:options="selectOptions1"
@@ -37,16 +37,23 @@
       @change="onSelect"
     />
   </div>
+  <div class="container">
+    <FileBrowser
+      v-bind:label="fbLabel1"
+    />
+  </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
 import Select from './components/Select.vue'
+import FileBrowser from './components/FileBrowser.vue'
 
 export default defineComponent({
   name: 'App',
   components: {
-    Select
+    Select,
+    FileBrowser,
   },
   data() {
     return {
@@ -58,7 +65,7 @@ export default defineComponent({
       ],
       selectLabel2: 'selection 2',
       selectOptions2: [
-        {text: 'option c', value: 3},
+        {text: 'option C', value: 3},
         {text: 'option d', value: 4},
         {text: 'option e', value: 5},
         {text: 'option f', value: 6},
@@ -87,7 +94,8 @@ export default defineComponent({
       selectOptions5: [
         {text: 'option a', value: 1},
       ],
-      selectLabel6: 'selection 5',
+      selectLabel6: 'selection 6',
+      fbLabel1: 'File browser',
     }
   },
   methods: {
@@ -108,7 +116,7 @@ export default defineComponent({
   color: #2c3e50;
   margin-top: 60px;
 }
-#container {
+.container {
   width: 400px;
   margin: 0 auto;
 }
